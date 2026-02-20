@@ -27,6 +27,7 @@ def macro_api():
     if action in ['check', 'heartbeat']:
         c.execute("SELECT * FROM users WHERE hwid=%s", (hwid,))
         user = c.fetchone()
+        
         if user:
             if user[2]: # is_banned
                 conn.close()
@@ -36,6 +37,9 @@ def macro_api():
             conn.close()
             return jsonify({"success": True, "username": user[1]})
         else:
+            # NEW: Create "Unknown User" profile on first-ever boot
+            c.execute("INSERT INTO users (hwid, username, is_banned, last_seen) VALUES (%s, %s, FALSE, CURRENT_TIMESTAMP)", (hwid, "Unknown User"))
+            conn.commit()
             conn.close()
             return jsonify({"auth_required": True})
 
@@ -48,15 +52,14 @@ def macro_api():
 
     elif action == 'activate':
         key = data.get('key')
-        c.execute("SELECT intended_username, use_count FROM keys WHERE key_string=%s", (key,))
+        c.execute("SELECT intended_username FROM keys WHERE key_string=%s AND is_used=FALSE", (key,))
         valid_key = c.fetchone()
         
         if valid_key:
             assigned_name = valid_key[0] or "Unknown User"
-            new_use_count = (valid_key[1] or 0) + 1
-            
-            c.execute("INSERT INTO users (hwid, username) VALUES (%s, %s) ON CONFLICT (hwid) DO NOTHING", (hwid, assigned_name))
-            c.execute("UPDATE keys SET is_used=TRUE, assigned_hwid=%s, use_count=%s WHERE key_string=%s", (hwid, new_use_count, key))
+            # Update the "Unknown User" record with the real assigned name
+            c.execute("UPDATE users SET username=%s WHERE hwid=%s", (assigned_name, hwid))
+            c.execute("UPDATE keys SET is_used=TRUE, assigned_hwid=%s, use_count=use_count+1 WHERE key_string=%s", (hwid, key))
             conn.commit()
             conn.close()
             return jsonify({"success": True})
@@ -65,6 +68,8 @@ def macro_api():
         return jsonify({"error": "Invalid Key"})
 
     return jsonify({"error": "Invalid Action"})
+
+# ... (Keep dashboard, logout, generate_key, delete_key, ban_user, unban_user, delete_user same as before)
 
 @app.route('/', methods=['GET', 'POST'])
 def dashboard():
@@ -159,4 +164,5 @@ def delete_user(hwid):
     conn.commit()
     conn.close()
     return redirect('/')
+
 
