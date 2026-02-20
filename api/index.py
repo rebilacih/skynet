@@ -7,7 +7,7 @@ import string
 
 app = Flask(__name__)
 app.secret_key = 'super_secret_admin_key' # Change this
-ADMIN_PASSWORD = 'password123' # Change this
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'password123')
 
 def get_db_connection():
     conn = psycopg2.connect(os.environ['POSTGRES_URL'])
@@ -97,4 +97,5 @@ def generate_key():
     c.execute("INSERT INTO keys (key_string) VALUES (%s)", (new_key,))
     conn.commit()
     conn.close()
+
     return f"New Key Generated: {new_key} <br><a href='/'>Back to Dashboard</a>"
