@@ -17,7 +17,11 @@
         .online { background-color: #00ff00; }
         .offline { background-color: #555; }
         input[type="password"] { background: #333; border: none; color: white; padding: 5px 10px; border-radius: 4px; }
-        button { background: #ff4444; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+        button { background: #ff4444; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; transition: 0.2s; }
+        button:hover { opacity: 0.8; }
+        table { width: 100%; text-align: left; border-collapse: collapse; margin-top: 10px; }
+        th { padding: 10px; border-bottom: 1px solid #444; color: #888; }
+        td { padding: 10px; border-bottom: 1px solid #333; }
     </style>
 </head>
 <body>
@@ -25,25 +29,58 @@
     <div class="nav">
         <h1 class="title">SKYNET ADMIN</h1>
         {% if not admin %}
-        <form method="POST">
+        <form method="POST" style="margin: 0;">
             <input type="password" name="password" placeholder="Admin Pass">
             <button type="submit">Login</button>
         </form>
         {% else %}
-        <div>
-            <a href="/generate_key"><button style="background: #00cc00;">+ Generate Key</button></a>
-            <div class="pfp" style="display:inline-block; vertical-align:middle; margin-left:10px; background:#ff4444;"></div>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <form action="/generate_key" method="POST" style="margin: 0;">
+                <button type="submit" style="background: #00cc00;">+ Generate Key</button>
+            </form>
+            <a href="/logout"><button style="background: #555;">Logout</button></a>
+            
+            <img src="https://i.imgur.com/G2xR1qG.png" alt="Admin" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #ff4444;">
         </div>
         {% endif %}
     </div>
 
+    {% if admin %}
     <div class="stats-grid">
         <div class="stat-box"><h2>Total Users</h2><p>{{ total }}</p></div>
         <div class="stat-box"><h2>Active Now</h2><p style="color: #00ff00;">{{ online }}</p></div>
     </div>
 
+    <h2 style="border-bottom: 1px solid #333; padding-bottom: 10px;">Access Keys Management</h2>
+    <div style="background: #222; border-radius: 8px; border: 1px solid #333; padding: 10px; margin-bottom: 30px;">
+        <table>
+            <tr>
+                <th>Key</th>
+                <th>Status</th>
+                <th>Assigned HWID</th>
+                <th>Action</th>
+            </tr>
+            {% for k in keys %}
+            <tr>
+                <td style="font-family: monospace; color: #ff4444; font-size: 16px;">{{ k.key }}</td>
+                <td>
+                    {% if k.used %}<span style="color: #555;">Used</span>{% else %}<span style="color: #00ff00;">Available</span>{% endif %}
+                </td>
+                <td style="color: #888; font-size: 12px;">{{ k.hwid or 'None' }}</td>
+                <td>
+                    <form action="/delete_key/{{ k.key }}" method="POST" style="margin: 0;">
+                        <button type="submit" style="background: transparent; color: #ff4444; border: 1px solid #ff4444; padding: 4px 8px;">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+            {% if not keys %}
+            <tr><td colspan="4" style="text-align: center; color: #555; padding: 20px;">No keys generated yet.</td></tr>
+            {% endif %}
+        </table>
+    </div>
+
     <h2 style="border-bottom: 1px solid #333; padding-bottom: 10px;">User Profiles</h2>
-    
     <div class="user-grid">
         {% for u in users %}
         <div class="user-card">
@@ -58,7 +95,11 @@
             </div>
         </div>
         {% endfor %}
+        {% if not users %}
+        <p style="color: #555;">No users registered yet.</p>
+        {% endif %}
     </div>
+    {% endif %}
 
 </body>
 </html>
