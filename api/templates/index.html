@@ -11,7 +11,8 @@
         .stat-box h2 { color: #888; font-size: 14px; margin-top: 0; }
         .stat-box p { font-size: 28px; font-weight: bold; margin: 0; }
         .user-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; margin-bottom: 30px; }
-        .user-card { background: #222; padding: 15px; border-radius: 8px; border: 1px solid #333; display: flex; align-items: center; gap: 15px; }
+        .user-card { background: #222; padding: 15px; border-radius: 8px; border: 1px solid #333; display: flex; flex-direction: column; gap: 10px; }
+        .user-header { display: flex; align-items: center; gap: 15px; }
         .pfp { width: 40px; height: 40px; background: #444; border-radius: 50%; }
         .dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; }
         .online { background-color: #00ff00; }
@@ -40,7 +41,6 @@
                 <button type="submit" style="background: #00cc00;">+ Generate Key</button>
             </form>
             <a href="/logout"><button style="background: #555;">Logout</button></a>
-            
             <img src="https://i.imgur.com/G2xR1qG.png" alt="Admin" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #ff4444;">
         </div>
         {% endif %}
@@ -55,15 +55,37 @@
     <div class="user-grid">
         {% for u in users %}
         <div class="user-card">
-            <div class="pfp"></div>
-            <div>
-                <strong style="font-size: 16px;">{{ u.name }}</strong>
-                <div style="color: #888; font-size: 12px;">HWID: {{ u.hwid }}</div>
-                <div style="font-size: 12px; margin-top: 5px;">
-                    <span class="dot {% if u.online %}online{% else %}offline{% endif %}"></span>
-                    {% if u.online %}Online{% else %}Offline{% endif %}
+            <div class="user-header">
+                <div class="pfp"></div>
+                <div>
+                    <strong style="font-size: 16px; {% if u.is_banned %}text-decoration: line-through; color: #888;{% endif %}">{{ u.name }}</strong>
+                    {% if u.is_banned %}<span style="color: #ff4444; font-size: 12px; font-weight: bold; margin-left: 5px;">BANNED</span>{% endif %}
+                    
+                    <div style="color: #888; font-size: 12px;">HWID: {{ u.hwid }}</div>
+                    <div style="font-size: 12px; margin-top: 5px;">
+                        <span class="dot {% if u.online and not u.is_banned %}online{% else %}offline{% endif %}"></span>
+                        {% if u.online and not u.is_banned %}Online{% else %}Offline{% endif %}
+                    </div>
                 </div>
             </div>
+            
+            {% if admin %}
+            <div style="margin-top: 5px; display: flex; gap: 8px; border-top: 1px solid #333; padding-top: 10px;">
+                {% if u.is_banned %}
+                    <form action="/unban_user/{{ u.hwid }}" method="POST" style="margin: 0;">
+                        <button type="submit" style="background: transparent; color: #00cc00; border: 1px solid #00cc00; padding: 4px 8px; font-size: 12px;">Unban</button>
+                    </form>
+                {% else %}
+                    <form action="/ban_user/{{ u.hwid }}" method="POST" style="margin: 0;">
+                        <button type="submit" style="background: transparent; color: #ffaa00; border: 1px solid #ffaa00; padding: 4px 8px; font-size: 12px;">Ban</button>
+                    </form>
+                {% endif %}
+                <form action="/delete_user/{{ u.hwid }}" method="POST" style="margin: 0;">
+                    <button type="submit" style="background: transparent; color: #ff4444; border: 1px solid #ff4444; padding: 4px 8px; font-size: 12px;">Remove</button>
+                </form>
+            </div>
+            {% endif %}
+            
         </div>
         {% endfor %}
         {% if not users %}
@@ -72,12 +94,13 @@
     </div>
 
     {% if admin %}
-    <h2 style="border-bottom: 1px solid #333; padding-bottom: 10px; margin-top: 40px; color: #ff4444;">Admin Controls</h2>
+    <h2 style="border-bottom: 1px solid #333; padding-bottom: 10px; margin-top: 40px; color: #ff4444;">Access Keys Management</h2>
     <div style="background: #222; border-radius: 8px; border: 1px solid #333; padding: 10px; margin-bottom: 30px;">
         <table>
             <tr>
                 <th>Key</th>
                 <th>Assigned User</th>
+                <th>Uses</th>
                 <th>Status</th>
                 <th>HWID Lock</th>
                 <th>Action</th>
@@ -86,19 +109,20 @@
             <tr>
                 <td style="font-family: monospace; color: #ff4444; font-size: 16px;">{{ k.key }}</td>
                 <td style="color: #fff;">{{ k.intended }}</td>
+                <td style="color: #00cc00; font-weight: bold;">{{ k.uses }}</td>
                 <td>
                     {% if k.used %}<span style="color: #555;">Used</span>{% else %}<span style="color: #00ff00;">Available</span>{% endif %}
                 </td>
                 <td style="color: #888; font-size: 12px;">{{ k.hwid or 'Unlinked' }}</td>
                 <td>
                     <form action="/delete_key/{{ k.key }}" method="POST" style="margin: 0;">
-                        <button type="submit" style="background: transparent; color: #ff4444; border: 1px solid #ff4444; padding: 4px 8px;">Revoke</button>
+                        <button type="submit" style="background: transparent; color: #ff4444; border: 1px solid #ff4444; padding: 4px 8px;">Revoke Key</button>
                     </form>
                 </td>
             </tr>
             {% endfor %}
             {% if not keys %}
-            <tr><td colspan="5" style="text-align: center; color: #555; padding: 20px;">No keys generated yet.</td></tr>
+            <tr><td colspan="6" style="text-align: center; color: #555; padding: 20px;">No keys generated yet.</td></tr>
             {% endif %}
         </table>
     </div>
