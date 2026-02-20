@@ -39,9 +39,16 @@ def macro_api():
             conn.close()
             return jsonify({"auth_required": True})
 
+    elif action == 'disconnect':
+        # Instantly sets their last seen time to 10 minutes ago so the dot turns gray immediately
+        past_time = datetime.datetime.now() - datetime.timedelta(minutes=10)
+        c.execute("UPDATE users SET last_seen=%s WHERE hwid=%s", (past_time, hwid))
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True})
+
     elif action == 'activate':
         key = data.get('key')
-        # Fetch the intended username you assigned to this key
         c.execute("SELECT intended_username FROM keys WHERE key_string=%s AND is_used=FALSE", (key,))
         valid_key = c.fetchone()
         
@@ -73,7 +80,6 @@ def dashboard():
     
     keys = []
     if is_admin:
-        # Now fetches the intended_username as well
         c.execute("SELECT key_string, is_used, assigned_hwid, intended_username FROM keys")
         keys = [{"key": k[0], "used": k[1], "hwid": k[2], "intended": k[3]} for k in c.fetchall()]
         
@@ -97,7 +103,6 @@ def logout():
 def generate_key():
     if not session.get('admin'): return redirect('/')
     
-    # Grabs the name you typed into the form
     intended_user = request.form.get('username', 'Unnamed User')
     new_key = "SK-" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
     
@@ -113,7 +118,18 @@ def delete_key(key_string):
     if not session.get('admin'): return redirect('/')
     conn = get_db_connection()
     c = conn.cursor()
+    
+    # 1. Check if the key is attached to a HWID
+    c.execute("SELECT assigned_hwid FROM keys WHERE key_string=%s", (key_string,))
+    row = c.fetchone()
+    
+    # 2. If it is, delete the user from the whitelist so they are locked out
+    if row and row[0]:
+        c.execute("DELETE FROM users WHERE hwid=%s", (row[0],))
+        
+    # 3. Delete the key itself
     c.execute("DELETE FROM keys WHERE key_string=%s", (key_string,))
+    
     conn.commit()
     conn.close()
     return redirect('/')
