@@ -149,7 +149,14 @@ def delete_user(hwid):
     if not session.get('admin'): return redirect('/')
     conn = get_db_connection()
     c = conn.cursor()
+    
+    # 1. Detach the user's HWID from their key and make the key available again
+    c.execute("UPDATE keys SET assigned_hwid=NULL, is_used=FALSE WHERE assigned_hwid=%s", (hwid,))
+    
+    # 2. Now that the link is broken, safely delete the user profile
     c.execute("DELETE FROM users WHERE hwid=%s", (hwid,))
+    
     conn.commit()
     conn.close()
     return redirect('/')
+
