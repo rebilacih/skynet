@@ -28,7 +28,7 @@ def macro_api():
         c.execute("SELECT * FROM users WHERE hwid=%s", (hwid,))
         user = c.fetchone()
         if user:
-            if user[2]: 
+            if user[2]: # is_banned
                 conn.close()
                 return jsonify({"banned": True})
             c.execute("UPDATE users SET last_seen=CURRENT_TIMESTAMP WHERE hwid=%s", (hwid,))
@@ -40,7 +40,6 @@ def macro_api():
             return jsonify({"auth_required": True})
 
     elif action == 'disconnect':
-        # Instantly sets their last seen time to 10 minutes ago so the dot turns gray immediately
         past_time = datetime.datetime.now() - datetime.timedelta(minutes=10)
         c.execute("UPDATE users SET last_seen=%s WHERE hwid=%s", (past_time, hwid))
         conn.commit()
@@ -49,13 +48,15 @@ def macro_api():
 
     elif action == 'activate':
         key = data.get('key')
-        c.execute("SELECT intended_username FROM keys WHERE key_string=%s AND is_used=FALSE", (key,))
+        c.execute("SELECT intended_username, use_count FROM keys WHERE key_string=%s", (key,))
         valid_key = c.fetchone()
         
         if valid_key:
             assigned_name = valid_key[0] or "Unknown User"
+            new_use_count = (valid_key[1] or 0) + 1
+            
             c.execute("INSERT INTO users (hwid, username) VALUES (%s, %s) ON CONFLICT (hwid) DO NOTHING", (hwid, assigned_name))
-            c.execute("UPDATE keys SET is_used=TRUE, assigned_hwid=%s WHERE key_string=%s", (hwid, key))
+            c.execute("UPDATE keys SET is_used=TRUE, assigned_hwid=%s, use_count=%s WHERE key_string=%s", (hwid, new_use_count, key))
             conn.commit()
             conn.close()
             return jsonify({"success": True})
@@ -75,13 +76,13 @@ def dashboard():
     
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT * FROM users")
+    c.execute("SELECT hwid, username, is_banned, last_seen FROM users")
     users = c.fetchall()
     
     keys = []
     if is_admin:
-        c.execute("SELECT key_string, is_used, assigned_hwid, intended_username FROM keys")
-        keys = [{"key": k[0], "used": k[1], "hwid": k[2], "intended": k[3]} for k in c.fetchall()]
+        c.execute("SELECT key_string, is_used, assigned_hwid, intended_username, use_count FROM keys")
+        keys = [{"key": k[0], "used": k[1], "hwid": k[2], "intended": k[3], "uses": k[4] or 0} for k in c.fetchall()]
         
     conn.close()
     
@@ -89,8 +90,8 @@ def dashboard():
     formatted_users = []
     for u in users:
         is_online = (datetime.datetime.now() - u[3]).total_seconds() < 300 if u[3] else False
-        if is_online: online_count += 1
-        formatted_users.append({"hwid": u[0], "name": u[1], "online": is_online})
+        if is_online and not u[2]: online_count += 1
+        formatted_users.append({"hwid": u[0], "name": u[1], "is_banned": u[2], "online": is_online})
 
     return render_template('index.html', admin=is_admin, users=formatted_users, keys=keys, total=len(users), online=online_count)
 
@@ -102,34 +103,53 @@ def logout():
 @app.route('/generate_key', methods=['POST'])
 def generate_key():
     if not session.get('admin'): return redirect('/')
-    
     intended_user = request.form.get('username', 'Unnamed User')
     new_key = "SK-" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
-    
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("INSERT INTO keys (key_string, intended_username) VALUES (%s, %s)", (new_key, intended_user))
+    c.execute("INSERT INTO keys (key_string, intended_username, use_count) VALUES (%s, %s, 0)", (new_key, intended_user))
     conn.commit()
     conn.close()
     return redirect('/')
 
+# --- KEY MANAGEMENT ---
 @app.route('/delete_key/<key_string>', methods=['POST'])
 def delete_key(key_string):
     if not session.get('admin'): return redirect('/')
     conn = get_db_connection()
     c = conn.cursor()
-    
-    # 1. Check if the key is attached to a HWID
-    c.execute("SELECT assigned_hwid FROM keys WHERE key_string=%s", (key_string,))
-    row = c.fetchone()
-    
-    # 2. If it is, delete the user from the whitelist so they are locked out
-    if row and row[0]:
-        c.execute("DELETE FROM users WHERE hwid=%s", (row[0],))
-        
-    # 3. Delete the key itself
     c.execute("DELETE FROM keys WHERE key_string=%s", (key_string,))
-    
+    conn.commit()
+    conn.close()
+    return redirect('/')
+
+# --- USER MANAGEMENT ---
+@app.route('/ban_user/<hwid>', methods=['POST'])
+def ban_user(hwid):
+    if not session.get('admin'): return redirect('/')
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("UPDATE users SET is_banned=TRUE WHERE hwid=%s", (hwid,))
+    conn.commit()
+    conn.close()
+    return redirect('/')
+
+@app.route('/unban_user/<hwid>', methods=['POST'])
+def unban_user(hwid):
+    if not session.get('admin'): return redirect('/')
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("UPDATE users SET is_banned=FALSE WHERE hwid=%s", (hwid,))
+    conn.commit()
+    conn.close()
+    return redirect('/')
+
+@app.route('/delete_user/<hwid>', methods=['POST'])
+def delete_user(hwid):
+    if not session.get('admin'): return redirect('/')
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("DELETE FROM users WHERE hwid=%s", (hwid,))
     conn.commit()
     conn.close()
     return redirect('/')
