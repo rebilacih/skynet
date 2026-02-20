@@ -1,126 +1,145 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Skynet Admin</title>
+    <title>Skynet Admin Dashboard</title>
     <style>
-        body { background-color: #1a1a1a; color: white; font-family: 'Segoe UI', sans-serif; padding: 20px; }
+        body { background-color: #1a1a1a; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; }
         .nav { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 10px; }
-        .title { color: #ff4444; letter-spacing: 2px; }
+        .title { color: #ff4444; letter-spacing: 2px; font-weight: bold; }
         .stats-grid { display: flex; gap: 20px; margin: 20px 0; }
         .stat-box { background: #222; padding: 20px; border-radius: 8px; flex: 1; text-align: center; border: 1px solid #333; }
-        .stat-box h2 { color: #888; font-size: 14px; margin-top: 0; }
-        .stat-box p { font-size: 28px; font-weight: bold; margin: 0; }
-        .user-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; margin-bottom: 30px; }
-        .user-card { background: #222; padding: 15px; border-radius: 8px; border: 1px solid #333; display: flex; flex-direction: column; gap: 10px; }
+        .stat-box h2 { color: #888; font-size: 14px; margin-top: 0; text-transform: uppercase; }
+        .stat-box p { font-size: 32px; font-weight: bold; margin: 0; }
+        .user-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; margin-bottom: 40px; }
+        .user-card { background: #222; padding: 15px; border-radius: 8px; border: 1px solid #333; display: flex; flex-direction: column; gap: 12px; }
         .user-header { display: flex; align-items: center; gap: 15px; }
-        .pfp { width: 40px; height: 40px; background: #444; border-radius: 50%; }
-        .dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; }
-        .online { background-color: #00ff00; }
+        .pfp { width: 45px; height: 45px; background: #444; border-radius: 50%; border: 2px solid #333; }
+        .dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .online { background-color: #00ff00; box-shadow: 0 0 5px #00ff00; }
         .offline { background-color: #555; }
-        input[type="text"], input[type="password"] { background: #333; border: none; color: white; padding: 6px 10px; border-radius: 4px; }
-        button { background: #ff4444; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; transition: 0.2s; }
-        button:hover { opacity: 0.8; }
-        table { width: 100%; text-align: left; border-collapse: collapse; margin-top: 10px; }
-        th { padding: 10px; border-bottom: 1px solid #444; color: #888; }
-        td { padding: 10px; border-bottom: 1px solid #333; }
+        input[type="text"], input[type="password"] { background: #333; border: 1px solid #444; color: white; padding: 8px 12px; border-radius: 4px; outline: none; }
+        input[type="text"]:focus { border-color: #00cc00; }
+        button { background: #ff4444; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        button:hover { opacity: 0.8; transform: translateY(-1px); }
+        .btn-gen { background: #00cc00; }
+        .btn-logout { background: #444; }
+        .btn-action { background: transparent; border: 1px solid #ff4444; color: #ff4444; padding: 4px 8px; font-size: 12px; }
+        .btn-ban { border-color: #ffaa00; color: #ffaa00; }
+        .btn-unban { border-color: #00cc00; color: #00cc00; }
+        table { width: 100%; text-align: left; border-collapse: collapse; margin-top: 10px; background: #222; border-radius: 8px; overflow: hidden; }
+        th { padding: 12px; border-bottom: 2px solid #333; color: #888; font-size: 13px; text-transform: uppercase; }
+        td { padding: 12px; border-bottom: 1px solid #333; }
+        .key-text { font-family: 'Consolas', monospace; color: #ff4444; font-size: 15px; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div class="nav">
-        <h1 class="title">SKYNET DASHBOARD</h1>
+        <h1 class="title">SKYNET COMMAND CENTER</h1>
         {% if not admin %}
-        <form method="POST" style="margin: 0;">
-            <input type="password" name="password" placeholder="Admin Pass">
+        <form method="POST" style="margin: 0; display: flex; gap: 10px;">
+            <input type="password" name="password" placeholder="Admin Access Code">
             <button type="submit">Login</button>
         </form>
         {% else %}
-        <div style="display: flex; align-items: center; gap: 15px;">
-            <form action="/generate_key" method="POST" style="margin: 0; display: flex; gap: 5px;">
-                <input type="text" name="username" placeholder="Assign Name..." required>
-                <button type="submit" style="background: #00cc00;">+ Generate Key</button>
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <form action="/generate_key" method="POST" style="margin: 0; display: flex; gap: 8px;">
+                <input type="text" name="username" placeholder="Assign User Profile..." required>
+                <button type="submit" class="btn-gen">+ New Key</button>
             </form>
-            <a href="/logout"><button style="background: #555;">Logout</button></a>
-            <img src="https://i.imgur.com/G2xR1qG.png" alt="Admin" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #ff4444;">
+            <a href="/logout"><button class="btn-logout">Logout</button></a>
+            <img src="https://i.imgur.com/G2xR1qG.png" alt="Admin" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid #ff4444;">
         </div>
         {% endif %}
     </div>
 
     <div class="stats-grid">
-        <div class="stat-box"><h2>Total Users</h2><p>{{ total }}</p></div>
-        <div class="stat-box"><h2>Active Now</h2><p style="color: #00ff00;">{{ online }}</p></div>
+        <div class="stat-box"><h2>Authorized HWIDs</h2><p>{{ total }}</p></div>
+        <div class="stat-box"><h2>Active Sessions</h2><p style="color: #00ff00;">{{ online }}</p></div>
     </div>
 
-    <h2 style="border-bottom: 1px solid #333; padding-bottom: 10px;">Live Status</h2>
+    <h2 style="border-bottom: 1px solid #333; padding-bottom: 10px; font-size: 18px;">Network Status</h2>
     <div class="user-grid">
         {% for u in users %}
         <div class="user-card">
             <div class="user-header">
                 <div class="pfp"></div>
                 <div>
-                    <strong style="font-size: 16px; {% if u.is_banned %}text-decoration: line-through; color: #888;{% endif %}">{{ u.name }}</strong>
-                    {% if u.is_banned %}<span style="color: #ff4444; font-size: 12px; font-weight: bold; margin-left: 5px;">BANNED</span>{% endif %}
+                    <strong style="font-size: 16px; {% if u.is_banned %}text-decoration: line-through; color: #ff4444;{% endif %}">{{ u.name }}</strong>
+                    {% if u.is_banned %}<span style="color: #ff4444; font-size: 10px; font-weight: bold; margin-left: 5px; border: 1px solid #ff4444; padding: 1px 4px; border-radius: 3px;">BANNED</span>{% endif %}
                     
                     {% if admin %}
-                        <div style="color: #888; font-size: 11px; font-family: monospace;">HWID: {{ u.hwid }}</div>
+                        <div style="color: #888; font-size: 11px; font-family: 'Consolas', monospace; margin-top: 2px;">{{ u.hwid }}</div>
                     {% else %}
-                        <div style="color: #444; font-size: 11px;">Identity Verified</div>
+                        <div style="color: #444; font-size: 11px; margin-top: 2px;">SECURE IDENTIFIER</div>
                     {% endif %}
 
-                    <div style="font-size: 12px; margin-top: 5px;">
+                    <div style="font-size: 12px; margin-top: 8px; display: flex; align-items: center;">
                         <span class="dot {% if u.online and not u.is_banned %}online{% else %}offline{% endif %}"></span>
-                        {% if u.online and not u.is_banned %}Online{% else %}Offline{% endif %}
+                        {% if u.online and not u.is_banned %}Active{% else %}Inactive{% endif %}
                     </div>
                 </div>
             </div>
             
             {% if admin %}
-            <div style="margin-top: 5px; display: flex; gap: 8px; border-top: 1px solid #333; padding-top: 10px;">
-                </div>
+            <div style="margin-top: 5px; display: flex; gap: 8px; border-top: 1px solid #333; padding-top: 12px;">
+                {% if u.is_banned %}
+                    <form action="/unban_user/{{ u.hwid }}" method="POST" style="margin: 0;">
+                        <button type="submit" class="btn-action btn-unban">Unban Device</button>
+                    </form>
+                {% else %}
+                    <form action="/ban_user/{{ u.hwid }}" method="POST" style="margin: 0;">
+                        <button type="submit" class="btn-action btn-ban">Ban HWID</button>
+                    </form>
+                {% endif %}
+                <form action="/delete_user/{{ u.hwid }}" method="POST" style="margin: 0;">
+                    <button type="submit" class="btn-action">Wipe Profile</button>
+                </form>
+            </div>
             {% endif %}
         </div>
         {% endfor %}
-    </div>
-            
-        </div>
-        {% endfor %}
         {% if not users %}
-        <p style="color: #555;">No users registered yet.</p>
+        <p style="color: #555; padding-left: 5px;">No device handshakes recorded.</p>
         {% endif %}
     </div>
 
     {% if admin %}
-    <h2 style="border-bottom: 1px solid #333; padding-bottom: 10px; margin-top: 40px; color: #ff4444;">Access Keys Management</h2>
-    <div style="background: #222; border-radius: 8px; border: 1px solid #333; padding: 10px; margin-bottom: 30px;">
+    <h2 style="border-bottom: 1px solid #333; padding-bottom: 10px; margin-top: 40px; color: #ff4444; font-size: 18px;">Key Management Vault</h2>
+    <div style="border: 1px solid #333; border-radius: 8px; overflow: hidden;">
         <table>
-            <tr>
-                <th>Key</th>
-                <th>Assigned User</th>
-                <th>Uses</th>
-                <th>Status</th>
-                <th>HWID Lock</th>
-                <th>Action</th>
-            </tr>
-            {% for k in keys %}
-            <tr>
-                <td style="font-family: monospace; color: #ff4444; font-size: 16px;">{{ k.key }}</td>
-                <td style="color: #fff;">{{ k.intended }}</td>
-                <td style="color: #00cc00; font-weight: bold;">{{ k.uses }}</td>
-                <td>
-                    {% if k.used %}<span style="color: #555;">Used</span>{% else %}<span style="color: #00ff00;">Available</span>{% endif %}
-                </td>
-                <td style="color: #888; font-size: 12px;">{{ k.hwid or 'Unlinked' }}</td>
-                <td>
-                    <form action="/delete_key/{{ k.key }}" method="POST" style="margin: 0;">
-                        <button type="submit" style="background: transparent; color: #ff4444; border: 1px solid #ff4444; padding: 4px 8px;">Revoke Key</button>
-                    </form>
-                </td>
-            </tr>
-            {% endfor %}
-            {% if not keys %}
-            <tr><td colspan="6" style="text-align: center; color: #555; padding: 20px;">No keys generated yet.</td></tr>
-            {% endif %}
+            <thead>
+                <tr>
+                    <th>Access Key</th>
+                    <th>Intended User</th>
+                    <th>Uses</th>
+                    <th>Status</th>
+                    <th>Locked HWID</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for k in keys %}
+                <tr>
+                    <td class="key-text">{{ k.key }}</td>
+                    <td style="color: #fff; font-weight: 500;">{{ k.intended }}</td>
+                    <td style="color: #00cc00; font-weight: bold;">{{ k.uses }}</td>
+                    <td>
+                        {% if k.used %}<span style="color: #888;">Provisioned</span>{% else %}<span style="color: #00ff00;">Ready</span>{% endif %}
+                    </td>
+                    <td style="color: #666; font-size: 11px; font-family: 'Consolas', monospace;">{{ k.hwid or 'Unbound' }}</td>
+                    <td>
+                        <form action="/delete_key/{{ k.key }}" method="POST" style="margin: 0;">
+                            <button type="submit" class="btn-action" style="padding: 2px 6px;">Revoke</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
         </table>
+        {% if not keys %}
+        <div style="text-align: center; color: #555; padding: 30px; background: #222;">No keys currently exist in the database.</div>
+        {% endif %}
     </div>
     {% endif %}
 
