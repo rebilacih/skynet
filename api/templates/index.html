@@ -61,7 +61,12 @@
                     <strong style="font-size: 16px; {% if u.is_banned %}text-decoration: line-through; color: #888;{% endif %}">{{ u.name }}</strong>
                     {% if u.is_banned %}<span style="color: #ff4444; font-size: 12px; font-weight: bold; margin-left: 5px;">BANNED</span>{% endif %}
                     
-                    <div style="color: #888; font-size: 12px;">HWID: {{ u.hwid }}</div>
+                    {% if admin %}
+                        <div style="color: #888; font-size: 11px; font-family: monospace;">HWID: {{ u.hwid }}</div>
+                    {% else %}
+                        <div style="color: #444; font-size: 11px;">Identity Verified</div>
+                    {% endif %}
+
                     <div style="font-size: 12px; margin-top: 5px;">
                         <span class="dot {% if u.online and not u.is_banned %}online{% else %}offline{% endif %}"></span>
                         {% if u.online and not u.is_banned %}Online{% else %}Offline{% endif %}
@@ -71,20 +76,11 @@
             
             {% if admin %}
             <div style="margin-top: 5px; display: flex; gap: 8px; border-top: 1px solid #333; padding-top: 10px;">
-                {% if u.is_banned %}
-                    <form action="/unban_user/{{ u.hwid }}" method="POST" style="margin: 0;">
-                        <button type="submit" style="background: transparent; color: #00cc00; border: 1px solid #00cc00; padding: 4px 8px; font-size: 12px;">Unban</button>
-                    </form>
-                {% else %}
-                    <form action="/ban_user/{{ u.hwid }}" method="POST" style="margin: 0;">
-                        <button type="submit" style="background: transparent; color: #ffaa00; border: 1px solid #ffaa00; padding: 4px 8px; font-size: 12px;">Ban</button>
-                    </form>
-                {% endif %}
-                <form action="/delete_user/{{ u.hwid }}" method="POST" style="margin: 0;">
-                    <button type="submit" style="background: transparent; color: #ff4444; border: 1px solid #ff4444; padding: 4px 8px; font-size: 12px;">Remove</button>
-                </form>
-            </div>
+                </div>
             {% endif %}
+        </div>
+        {% endfor %}
+    </div>
             
         </div>
         {% endfor %}
