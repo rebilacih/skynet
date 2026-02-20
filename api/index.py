@@ -5,8 +5,8 @@ import datetime
 import random
 import string
 
-app = Flask(__name__)
-app.secret_key = 'super_secret_admin_key' # Change this
+app = Flask(__name__, template_folder='templates')
+app.secret_key = 'super_secret_admin_key' # Change this later if you want
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'password123')
 
 def get_db_connection():
@@ -35,7 +35,6 @@ def macro_api():
                 conn.close()
                 return jsonify({"banned": True})
             
-            # Update last seen
             c.execute("UPDATE users SET last_seen=CURRENT_TIMESTAMP WHERE hwid=%s", (hwid,))
             conn.commit()
             conn.close()
@@ -73,29 +72,50 @@ def dashboard():
     
     conn = get_db_connection()
     c = conn.cursor()
+    
+    # Fetch Users
     c.execute("SELECT * FROM users")
     users = c.fetchall()
+    
+    # Fetch Keys (Only if admin)
+    keys = []
+    if is_admin:
+        c.execute("SELECT * FROM keys")
+        keys = [{"key": k[0], "used": k[1], "hwid": k[2]} for k in c.fetchall()]
+        
     conn.close()
     
     online_count = 0
     formatted_users = []
     for u in users:
-        # u = (hwid, username, is_banned, last_seen)
         is_online = (datetime.datetime.now() - u[3]).total_seconds() < 300 if u[3] else False
         if is_online: online_count += 1
         formatted_users.append({"hwid": u[0], "name": u[1], "online": is_online})
 
-    return render_template('index.html', admin=is_admin, users=formatted_users, total=len(users), online=online_count)
+    return render_template('index.html', admin=is_admin, users=formatted_users, keys=keys, total=len(users), online=online_count)
 
-@app.route('/generate_key')
+@app.route('/logout')
+def logout():
+    session.pop('admin', None)
+    return redirect('/')
+
+@app.route('/generate_key', methods=['POST'])
 def generate_key():
     if not session.get('admin'): return redirect('/')
-    
     new_key = "SK-" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
     conn = get_db_connection()
     c = conn.cursor()
     c.execute("INSERT INTO keys (key_string) VALUES (%s)", (new_key,))
     conn.commit()
     conn.close()
+    return redirect('/') # Reloads dashboard instantly
 
-    return f"New Key Generated: {new_key} <br><a href='/'>Back to Dashboard</a>"
+@app.route('/delete_key/<key_string>', methods=['POST'])
+def delete_key(key_string):
+    if not session.get('admin'): return redirect('/')
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("DELETE FROM keys WHERE key_string=%s", (key_string,))
+    conn.commit()
+    conn.close()
+    return redirect('/')
