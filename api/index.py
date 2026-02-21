@@ -37,7 +37,7 @@ def macro_api():
             conn.close()
             return jsonify({"success": True, "username": user[1]})
         else:
-            # NEW: Create "Unknown User" profile on first-ever boot
+            # Create "Unknown User" profile on first-ever boot
             c.execute("INSERT INTO users (hwid, username, is_banned, last_seen) VALUES (%s, %s, FALSE, CURRENT_TIMESTAMP)", (hwid, "Unknown User"))
             conn.commit()
             conn.close()
@@ -50,10 +50,10 @@ def macro_api():
         conn.close()
         return jsonify({"success": True})
 
-   elif action == 'activate':
+    elif action == 'activate':
         key = data.get('key')
         
-        # The crucial fix: Adding "AND is_used=FALSE" ensures a key can only be activated once
+        # STRICT SINGLE-USE LOCK
         c.execute("SELECT intended_username, use_count FROM keys WHERE key_string=%s AND is_used=FALSE", (key,))
         valid_key = c.fetchone()
         
@@ -61,11 +61,9 @@ def macro_api():
             assigned_name = valid_key[0] or "Unknown User"
             new_use_count = (valid_key[1] or 0) + 1
             
-            # Ensure the user exists, then update their profile with the assigned name
             c.execute("INSERT INTO users (hwid, username, is_banned, last_seen) VALUES (%s, %s, FALSE, CURRENT_TIMESTAMP) ON CONFLICT (hwid) DO NOTHING", (hwid, assigned_name))
             c.execute("UPDATE users SET username=%s WHERE hwid=%s", (assigned_name, hwid))
             
-            # Lock the key so it can never be used by another device
             c.execute("UPDATE keys SET is_used=TRUE, assigned_hwid=%s, use_count=%s WHERE key_string=%s", (hwid, new_use_count, key))
             conn.commit()
             conn.close()
@@ -73,7 +71,11 @@ def macro_api():
         
         conn.close()
         return jsonify({"error": "Invalid or Already Used Key"})
-# ... (Keep dashboard, logout, generate_key, delete_key, ban_user, unban_user, delete_user same as before)
+
+    return jsonify({"error": "Invalid Action"})
+
+
+# --- DASHBOARD & ADMIN ROUTES ---
 
 @app.route('/', methods=['GET', 'POST'])
 def dashboard():
@@ -121,7 +123,6 @@ def generate_key():
     conn.close()
     return redirect('/')
 
-# --- KEY MANAGEMENT ---
 @app.route('/delete_key/<key_string>', methods=['POST'])
 def delete_key(key_string):
     if not session.get('admin'): return redirect('/')
@@ -132,7 +133,6 @@ def delete_key(key_string):
     conn.close()
     return redirect('/')
 
-# --- USER MANAGEMENT ---
 @app.route('/ban_user/<hwid>', methods=['POST'])
 def ban_user(hwid):
     if not session.get('admin'): return redirect('/')
@@ -158,16 +158,8 @@ def delete_user(hwid):
     if not session.get('admin'): return redirect('/')
     conn = get_db_connection()
     c = conn.cursor()
-    
-    # 1. Detach the user's HWID from their key and make the key available again
     c.execute("UPDATE keys SET assigned_hwid=NULL, is_used=FALSE WHERE assigned_hwid=%s", (hwid,))
-    
-    # 2. Now that the link is broken, safely delete the user profile
     c.execute("DELETE FROM users WHERE hwid=%s", (hwid,))
-    
     conn.commit()
     conn.close()
     return redirect('/')
-
-
-
