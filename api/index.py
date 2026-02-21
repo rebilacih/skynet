@@ -50,25 +50,29 @@ def macro_api():
         conn.close()
         return jsonify({"success": True})
 
-    elif action == 'activate':
+   elif action == 'activate':
         key = data.get('key')
-        c.execute("SELECT intended_username FROM keys WHERE key_string=%s AND is_used=FALSE", (key,))
+        
+        # The crucial fix: Adding "AND is_used=FALSE" ensures a key can only be activated once
+        c.execute("SELECT intended_username, use_count FROM keys WHERE key_string=%s AND is_used=FALSE", (key,))
         valid_key = c.fetchone()
         
         if valid_key:
             assigned_name = valid_key[0] or "Unknown User"
-            # Update the "Unknown User" record with the real assigned name
+            new_use_count = (valid_key[1] or 0) + 1
+            
+            # Ensure the user exists, then update their profile with the assigned name
+            c.execute("INSERT INTO users (hwid, username, is_banned, last_seen) VALUES (%s, %s, FALSE, CURRENT_TIMESTAMP) ON CONFLICT (hwid) DO NOTHING", (hwid, assigned_name))
             c.execute("UPDATE users SET username=%s WHERE hwid=%s", (assigned_name, hwid))
-            c.execute("UPDATE keys SET is_used=TRUE, assigned_hwid=%s, use_count=use_count+1 WHERE key_string=%s", (hwid, key))
+            
+            # Lock the key so it can never be used by another device
+            c.execute("UPDATE keys SET is_used=TRUE, assigned_hwid=%s, use_count=%s WHERE key_string=%s", (hwid, new_use_count, key))
             conn.commit()
             conn.close()
             return jsonify({"success": True})
         
         conn.close()
-        return jsonify({"error": "Invalid Key"})
-
-    return jsonify({"error": "Invalid Action"})
-
+        return jsonify({"error": "Invalid or Already Used Key"})
 # ... (Keep dashboard, logout, generate_key, delete_key, ban_user, unban_user, delete_user same as before)
 
 @app.route('/', methods=['GET', 'POST'])
@@ -164,5 +168,6 @@ def delete_user(hwid):
     conn.commit()
     conn.close()
     return redirect('/')
+
 
 
