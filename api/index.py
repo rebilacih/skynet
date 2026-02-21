@@ -29,15 +29,28 @@ def macro_api():
         user = c.fetchone()
         
         if user:
-            if user[2]: # is_banned
+            # 1. Check if they are banned
+            if user[2]: 
                 conn.close()
                 return jsonify({"banned": True})
+            
+            # 2. THE FIX: Verify they actually own a claimed key in the database
+            c.execute("SELECT key_string FROM keys WHERE assigned_hwid=%s", (hwid,))
+            owned_key = c.fetchone()
+            
+            # Update their online status on the dashboard
             c.execute("UPDATE users SET last_seen=CURRENT_TIMESTAMP WHERE hwid=%s", (hwid,))
             conn.commit()
-            conn.close()
-            return jsonify({"success": True, "username": user[1]})
+            
+            # 3. Only let them in if they have a key attached to them
+            if owned_key:
+                conn.close()
+                return jsonify({"success": True, "username": user[1]})
+            else:
+                conn.close()
+                return jsonify({"auth_required": True})
         else:
-            # Create "Unknown User" profile on first-ever boot
+            # First-ever boot: Log them as Unknown, but DO NOT let them in
             c.execute("INSERT INTO users (hwid, username, is_banned, last_seen) VALUES (%s, %s, FALSE, CURRENT_TIMESTAMP)", (hwid, "Unknown User"))
             conn.commit()
             conn.close()
