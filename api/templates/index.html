@@ -54,7 +54,7 @@
     </div>
 
     <div class="stats-grid">
-        <div class="stat-box"><h2>Authorized HWIDs</h2><p>{{ total }}</p></div>
+        <div class="stat-box"><h2>Authorized Devices</h2><p>{{ total }}</p></div>
         <div class="stat-box"><h2>Active Sessions</h2><p style="color: #00ff00;">{{ online }}</p></div>
     </div>
 
@@ -69,7 +69,7 @@
                     {% if u.is_banned %}<span style="color: #ff4444; font-size: 10px; font-weight: bold; margin-left: 5px; border: 1px solid #ff4444; padding: 1px 4px; border-radius: 3px;">BANNED</span>{% endif %}
                     
                     {% if admin %}
-                        <div style="color: #888; font-size: 11px; font-family: 'Consolas', monospace; margin-top: 2px;">{{ u.hwid }}</div>
+                        <div style="color: #888; font-size: 11px; font-family: 'Consolas', monospace; margin-top: 2px;">DEVICE: {{ u.hwid }}</div>
                     {% else %}
                         <div style="color: #444; font-size: 11px; margin-top: 2px;">SECURE IDENTIFIER</div>
                     {% endif %}
@@ -89,7 +89,7 @@
                     </form>
                 {% else %}
                     <form action="/ban_user/{{ u.hwid }}" method="POST" style="margin: 0;">
-                        <button type="submit" class="btn-action btn-ban">Ban HWID</button>
+                        <button type="submit" class="btn-action btn-ban">Ban Device</button>
                     </form>
                 {% endif %}
                 <form action="/delete_user/{{ u.hwid }}" method="POST" style="margin: 0;">
@@ -114,7 +114,7 @@
                     <th>Intended User</th>
                     <th>Uses</th>
                     <th>Status</th>
-                    <th>Locked HWID</th>
+                    <th>Bound Device</th>
                     <th>Action</th>
                 </tr>
             </thead>
